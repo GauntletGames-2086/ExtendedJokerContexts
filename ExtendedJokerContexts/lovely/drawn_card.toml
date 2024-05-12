@@ -1,0 +1,24 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 0
+
+#Drawn Cards
+[[patches]]
+[patches.regex]
+target = "cardarea.lua"
+pattern = '''(?<indent>[\t ]*)card:set_card_area\(self\)\n[\s\S][\s\S][\s\S][\s\S]self:set_ranks\(\)'''
+position = "after"
+line_prepend = "$indent"
+payload = '''
+--asdf
+if not (G.STATE == G.STATES.TAROT_PACK or G.STATE == G.STATES.SPECTRAL_PACK) and G.jokers and self == G.hand then
+    for j=1, #G.jokers.cards do
+        local eval = nil
+        eval = G.jokers.cards[j]:calculate_joker({drawn_card = card, full_hand = G.hand.cards})
+        if eval then
+            card_eval_status_text(G.jokers.cards[j], 'jokers', nil, 1, nil, eval)
+        end
+    end
+end
+'''

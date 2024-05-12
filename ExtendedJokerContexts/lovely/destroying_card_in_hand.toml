@@ -1,0 +1,53 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 0
+
+#Include unscored and cards in hand
+[[patches]]
+[patches.regex]
+target = "functions/state_events.lua"
+pattern = '''(?<indent>[\t ]*)for j=1, #G\.jokers\.cards do\n[\s][\s][\s][\s][\s][\s][\s][\s][\s][\s][\s][\s]eval_card\(G\.jokers\.cards\[j\], \{cardarea = G\.jokers, remove_playing_cards = true, removed = cards_destroyed\}\)'''
+position = "before"
+line_prepend = "$indent"
+payload = '''
+--asdf
+local unscored_cards = {}
+for i = 1, #G.play.cards do
+    if table.contains(scoring_hand, G.play.cards[i]) ~= true then unscored_cards[#unscored_cards+1] = G.play.cards[i] end
+end
+for i=1, #unscored_cards do
+    local destroyed = nil
+
+    for j = 1, #G.jokers.cards do
+        destroyed = G.jokers.cards[j]:calculate_joker({destroying_unscored_card = unscored_cards[i], full_hand = G.play.cards})
+        if destroyed then break end
+    end
+
+    if destroyed then 
+        if unscored_cards[i].ability.name == 'Glass Card' then 
+            unscored_cards[i].shattered = true
+        else 
+            unscored_cards[i].destroyed = true
+        end 
+        cards_destroyed[#cards_destroyed+1] = unscored_cards[i]
+    end
+end
+for i=1, #G.hand.cards do
+    local destroyed = nil
+
+    for j = 1, #G.jokers.cards do
+        destroyed = G.jokers.cards[j]:calculate_joker({destroying_in_hand_card = G.hand.cards[i], full_hand = G.hand.cards})
+        if destroyed then break end
+    end
+
+    if destroyed then 
+        if G.hand.cards[i].ability.name == 'Glass Card' then 
+            G.hand.cards[i].shattered = true
+        else 
+            G.hand.cards[i].destroyed = true
+        end 
+        cards_destroyed[#cards_destroyed+1] = G.hand.cards[i]
+    end
+end
+'''

@@ -1,0 +1,99 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 0
+
+#Score retrigger
+[[patches]]
+[patches.regex]
+target = "functions/state_events.lua"
+pattern = '''(?<indent>[\t ]*)local _card = G\.jokers\.cards\[i\] or G\.consumeables\.cards\[i \- #G\.jokers\.cards\]'''
+position = "before"
+line_prepend = "$indent"
+payload = '''
+--asdf
+local reps = {1}
+local j = 1
+while j <= #reps do
+    if reps[j] ~= 1 then
+        card_eval_status_text((reps[j].jokers).card, 'jokers', nil, nil, nil, (reps[j].jokers))
+        percent = percent + percent_delta
+    end
+'''
+
+[[patches]]
+[patches.regex]
+target = "functions/state_events.lua"
+pattern = '''(?<indent>[\t ]*)end\n\n[\s\S][\s\S][\s\S][\s\S][\s\S][\s\S][\s\S][\s\S]local nu_chip, nu_mult = G\.GAME\.selected_back:trigger_effect\{context = 'final_scoring_step', chips = hand_chips, mult = mult\}'''
+position = "before"
+line_prepend = "$indent"
+payload = '''
+--asdf
+        if reps[j] == 1 then 
+            --From Joker
+            for j=1, #G.jokers.cards do
+                --calculate the joker effects
+                local eval = eval_card(G.jokers.cards[j], {cardarea = G.jokers, full_hand = G.play.cards, scoring_hand = scoring_hand, scoring_name = text, poker_hands = poker_hands, other_card = _card, joker_repetition = {end_scoring = true}, card_effects = effects})
+                if next(eval) and eval.jokers then 
+                    for h = 1, eval.jokers.repetitions do
+                        reps[#reps+1] = eval
+                    end
+                end
+            end
+        end
+        j = j + 1
+    end
+'''
+
+#Payout retrigger
+[[patches]]
+[patches.regex]
+target = "functions/state_events.lua"
+pattern = '''(?<indent>[\t ]*)local ret = G\.jokers\.cards\[i\]:calculate_dollar_bonus\(\)'''
+position = "before"
+line_prepend = "$indent"
+payload = '''
+--asdf
+local reps = {1}
+local j = 1
+while j <= #reps do
+    if reps[j] ~= 1 then
+        card_eval_status_text((reps[j].jokers).card, 'jokers', nil, nil, nil, (reps[j].jokers))
+    end
+'''
+
+[[patches]]
+[patches.regex]
+target = "functions/state_events.lua"
+pattern = '''(?<indent>[\t ]*)dollars = dollars \+ ret\n[\s][\s][\s][\s][\s][\s][\s][\s]end'''
+position = "after"
+line_prepend = "$indent"
+payload = '''
+--asdf
+        if reps[j] == 1 then 
+            --From Joker
+            for j=1, #G.jokers.cards do
+                --calculate the joker effects
+                local eval = eval_card(G.jokers.cards[j], {cardarea = G.jokers, other_card = G.jokers.cards[i], joker_repetition = {payout = true}})
+                if next(eval) then 
+                    for h = 1, eval.jokers.repetitions do
+                        reps[#reps+1] = eval
+                    end
+                end
+            end
+        end
+        j = j + 1
+    end
+'''
+
+[[patches]]
+[patches.pattern]
+target = "functions/common_events.lua"
+pattern = "G.round_eval:add_child(full_row,G.round_eval:get_UIE_by_ID(config.bonus and 'bonus_round_eval' or 'base_round_eval'))"
+position = "at"
+payload = '''
+--asdf
+if not G.round_eval:get_UIE_by_ID(full_row.nodes[2].nodes[1].config.id) then G.round_eval:add_child(full_row,G.round_eval:get_UIE_by_ID(config.bonus and 'bonus_round_eval' or 'base_round_eval')) end
+'''
+match_indent = true
+overwrite = true
